@@ -1,0 +1,29 @@
+services:
+  fsharp-starter-api:
+    build:
+      context: .
+      dockerfile: ./src/FsharpStarter.Api/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+    restart: unless-stopped
+    volumes:
+      - fsharp-starter-db:/app/data
+    depends_on:
+      - aspire-dashboard
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+    container_name: aspire-dashboard
+    restart: unless-stopped
+    ports:
+      - 18888:18888
+      - 4317:18889
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+
+volumes:
+  fsharp-starter-db:

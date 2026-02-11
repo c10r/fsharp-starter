@@ -1,0 +1,388 @@
+locals {
+  lb_name        = "${var.name_prefix}-lb"
+  vm_name        = "${var.name_prefix}-vm"
+  data_disk_name = "${var.name_prefix}-data"
+  google_directory_credentials_secret_name = (
+    trimspace(var.google_directory_credentials_secret_name) != ""
+    ? trimspace(var.google_directory_credentials_secret_name)
+    : try(google_secret_manager_secret.google_directory_credentials[0].secret_id, "")
+  )
+  domain_parts = split(".", var.domain_name)
+  iap_email_domain = length(local.domain_parts) > 2 ? join(
+    ".",
+    slice(local.domain_parts, length(local.domain_parts) - 2, length(local.domain_parts))
+  ) : var.domain_name
+  iap_effective_access_members = length(var.iap_access_members) > 0 ? var.iap_access_members : ["domain:${local.iap_email_domain}"]
+  labels = {
+    app         = "fsharp-starter"
+    managed_by  = "opentofu"
+    environment = "prod"
+  }
+}
+
+resource "google_project_service" "required" {
+  for_each = toset([
+    "artifactregistry.googleapis.com",
+    "compute.googleapis.com",
+    "iap.googleapis.com",
+    "dns.googleapis.com",
+    "secretmanager.googleapis.com",
+  ])
+
+  service            = each.value
+  disable_on_destroy = false
+}
+
+resource "google_compute_network" "fsharp_starter" {
+  name                    = "${var.name_prefix}-vpc"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "fsharp_starter" {
+  name          = "${var.name_prefix}-subnet"
+  ip_cidr_range = "10.30.0.0/24"
+  network       = google_compute_network.fsharp_starter.id
+  region        = var.region
+}
+
+resource "google_artifact_registry_repository" "fsharp_starter" {
+  location               = var.artifact_registry_location
+  repository_id          = var.artifact_registry_repo
+  format                 = "DOCKER"
+  cleanup_policy_dry_run = var.artifact_cleanup_policy_dry_run
+
+  cleanup_policies {
+    id     = "keep-recent-fsharp-starter-api"
+    action = "KEEP"
+
+    most_recent_versions {
+      package_name_prefixes = [var.image_name]
+      keep_count            = var.artifact_keep_recent_count
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-older-images"
+    action = "DELETE"
+
+    condition {
+      tag_state  = "ANY"
+      older_than = var.artifact_delete_older_than
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_service_account" "vm" {
+  account_id   = "${var.name_prefix}-vm-sa"
+  display_name = "FsharpStarter VM Service Account"
+}
+
+resource "google_project_iam_member" "vm_artifact_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.vm.email}"
+}
+
+resource "google_project_iam_member" "vm_logging_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.vm.email}"
+}
+
+resource "google_secret_manager_secret" "google_directory_credentials" {
+  count = trimspace(var.google_directory_service_account_key_json) != "" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = "${var.name_prefix}-google-directory-dwd-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "google_directory_credentials" {
+  count = trimspace(var.google_directory_service_account_key_json) != "" ? 1 : 0
+
+  secret      = google_secret_manager_secret.google_directory_credentials[0].id
+  secret_data = var.google_directory_service_account_key_json
+}
+
+resource "google_secret_manager_secret_iam_member" "vm_google_directory_credentials_accessor" {
+  count = local.google_directory_credentials_secret_name != "" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = local.google_directory_credentials_secret_name
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.vm.email}"
+}
+
+resource "google_compute_disk" "data_protected" {
+  count = var.preserve_data_disk_on_destroy ? 1 : 0
+
+  name = local.data_disk_name
+  type = var.data_disk_type
+  zone = var.zone
+  size = var.data_disk_size_gb
+
+  physical_block_size_bytes = 4096
+  labels                    = local.labels
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_compute_disk" "data_unprotected" {
+  count = var.preserve_data_disk_on_destroy ? 0 : 1
+
+  name = local.data_disk_name
+  type = var.data_disk_type
+  zone = var.zone
+  size = var.data_disk_size_gb
+
+  physical_block_size_bytes = 4096
+  labels                    = local.labels
+}
+
+resource "google_compute_instance_template" "fsharp_starter" {
+  name_prefix  = "${var.name_prefix}-tpl-"
+  machine_type = var.machine_type
+  tags         = ["${var.name_prefix}-fsharp-starter"]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  disk {
+    boot         = true
+    auto_delete  = true
+    source_image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    disk_size_gb = var.boot_disk_size_gb
+    disk_type    = "pd-balanced"
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.fsharp_starter.id
+
+    access_config {
+      // Ephemeral external IP for package/image pulls and direct troubleshooting.
+      // The app itself is served via the HTTPS load balancer.
+    }
+  }
+
+  service_account {
+    email  = google_service_account.vm.email
+    scopes = ["cloud-platform"]
+  }
+
+  disk {
+    boot        = false
+    auto_delete = false
+    source      = local.data_disk_name
+    device_name = local.data_disk_name
+    mode        = "READ_WRITE"
+  }
+
+  metadata_startup_script = templatefile("${path.module}/templates/startup.sh.tmpl", {
+    artifact_registry_location                   = var.artifact_registry_location
+    project_id                                   = var.project_id
+    artifact_registry_repo                       = var.artifact_registry_repo
+    image_name                                   = var.image_name
+    initial_image_tag                            = var.initial_image_tag
+    iap_jwt_audience                             = var.iap_jwt_audience
+    google_directory_enabled                     = var.google_directory_enabled
+    google_directory_admin_user_email            = var.google_directory_admin_user_email
+    google_directory_scope                       = var.google_directory_scope
+    google_directory_org_unit_key_prefix         = var.google_directory_org_unit_key_prefix
+    google_directory_include_org_unit_hierarchy  = var.google_directory_include_org_unit_hierarchy
+    google_directory_custom_attribute_key_prefix = var.google_directory_custom_attribute_key_prefix
+    google_directory_credentials_secret_name     = local.google_directory_credentials_secret_name
+    org_admin_email                              = var.org_admin_email
+    validate_iap_jwt                             = var.validate_iap_jwt
+    data_disk_name                               = local.data_disk_name
+    data_mount_path                              = var.data_mount_path
+  })
+
+  labels = local.labels
+
+  depends_on = [
+    google_project_iam_member.vm_artifact_reader,
+    google_project_iam_member.vm_logging_writer,
+    google_artifact_registry_repository.fsharp_starter,
+    google_project_service.required,
+  ]
+}
+
+resource "google_compute_instance_group_manager" "fsharp_starter" {
+  name               = "${var.name_prefix}-mig"
+  zone               = var.zone
+  base_instance_name = local.vm_name
+  target_size        = 1
+
+  version {
+    instance_template = google_compute_instance_template.fsharp_starter.id
+  }
+
+  named_port {
+    name = "http"
+    port = 8080
+  }
+
+  update_policy {
+    type                  = "PROACTIVE"
+    minimal_action        = "REPLACE"
+    max_surge_fixed       = 0
+    max_unavailable_fixed = 1
+  }
+}
+
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "${var.name_prefix}-allow-ssh"
+  network = google_compute_network.fsharp_starter.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = var.allow_ssh_from
+  target_tags   = ["${var.name_prefix}-fsharp-starter"]
+}
+
+resource "google_compute_firewall" "allow_lb_to_app" {
+  name    = "${var.name_prefix}-allow-lb-to-app"
+  network = google_compute_network.fsharp_starter.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8080"]
+  }
+
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+  target_tags   = ["${var.name_prefix}-fsharp-starter"]
+}
+
+resource "google_compute_health_check" "fsharp_starter" {
+  name               = "${var.name_prefix}-hc"
+  check_interval_sec = 10
+  timeout_sec        = 5
+
+  http_health_check {
+    port         = 8080
+    request_path = "/swagger/index.html"
+  }
+}
+
+resource "google_compute_backend_service" "fsharp_starter" {
+  name                  = "${var.name_prefix}-backend"
+  protocol              = "HTTP"
+  port_name             = "http"
+  timeout_sec           = 30
+  health_checks         = [google_compute_health_check.fsharp_starter.id]
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+
+  backend {
+    group           = google_compute_instance_group_manager.fsharp_starter.instance_group
+    balancing_mode  = "UTILIZATION"
+    capacity_scaler = 1
+  }
+
+  iap {
+    enabled              = true
+    oauth2_client_id     = var.oauth2_client_id
+    oauth2_client_secret = var.oauth2_client_secret
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_iap_web_backend_service_iam_binding" "fsharp_starter_access" {
+  project             = var.project_id
+  web_backend_service = google_compute_backend_service.fsharp_starter.name
+  role                = "roles/iap.httpsResourceAccessor"
+  members             = local.iap_effective_access_members
+}
+
+resource "google_compute_url_map" "fsharp_starter" {
+  name            = "${local.lb_name}-url-map"
+  default_service = google_compute_backend_service.fsharp_starter.id
+
+  host_rule {
+    hosts        = [var.domain_name]
+    path_matcher = "fsharp-starter"
+  }
+
+  path_matcher {
+    name            = "fsharp-starter"
+    default_service = google_compute_backend_service.fsharp_starter.id
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "fsharp_starter" {
+  name = "${local.lb_name}-cert-${replace(var.domain_name, ".", "-")}"
+
+  managed {
+    domains = [var.domain_name]
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "google_compute_target_https_proxy" "fsharp_starter" {
+  name             = "${local.lb_name}-https-proxy"
+  url_map          = google_compute_url_map.fsharp_starter.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.fsharp_starter.id]
+}
+
+resource "google_compute_global_address" "fsharp_starter" {
+  name = "${local.lb_name}-ip"
+}
+
+resource "google_compute_global_forwarding_rule" "https" {
+  name                  = "${local.lb_name}-https"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.fsharp_starter.id
+  ip_address            = google_compute_global_address.fsharp_starter.id
+}
+
+resource "google_compute_url_map" "http_redirect" {
+  name = "${local.lb_name}-http-redirect"
+
+  default_url_redirect {
+    https_redirect         = true
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+    strip_query            = false
+  }
+}
+
+resource "google_compute_target_http_proxy" "redirect" {
+  name    = "${local.lb_name}-http-proxy"
+  url_map = google_compute_url_map.http_redirect.id
+}
+
+resource "google_compute_global_forwarding_rule" "http" {
+  name                  = "${local.lb_name}-http"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.redirect.id
+  ip_address            = google_compute_global_address.fsharp_starter.id
+}
+
+resource "google_dns_record_set" "fsharp_starter" {
+  count = var.dns_managed_zone == "" ? 0 : 1
+
+  name         = "${var.domain_name}."
+  type         = "A"
+  ttl          = 300
+  managed_zone = var.dns_managed_zone
+  rrdatas      = [google_compute_global_address.fsharp_starter.address]
+}

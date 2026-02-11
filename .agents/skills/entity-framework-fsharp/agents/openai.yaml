@@ -1,0 +1,4 @@
+interface:
+  display_name: "Entity Framework F#"
+  short_description: "EF Core + SQLite persistence patterns for F# domain models"
+  default_prompt: "Apply EF Core and SQLite best practices for F# option/DU mapping, repository updates, and migration safety."

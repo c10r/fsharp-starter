@@ -1,0 +1,47 @@
+project_id                = "my-gcp-project"
+region                    = "us-central1"
+zone                      = "us-central1-a"
+name_prefix               = "fsharp-starter"
+domain_name               = "fsharp-starter.example.com"
+dns_managed_zone          = "" # optional
+
+artifact_registry_repo     = "fsharp-starter"
+artifact_registry_location = "us-central1"
+image_name                 = "fsharp-starter-api"
+initial_image_tag          = "latest"
+machine_type               = "e2-micro"
+boot_disk_size_gb          = 10
+data_disk_size_gb          = 30
+data_disk_type             = "pd-balanced"
+data_mount_path            = "/mnt/fsharp-starter-data"
+preserve_data_disk_on_destroy = true
+artifact_cleanup_policy_dry_run = false
+artifact_keep_recent_count      = 5
+artifact_delete_older_than      = "7d"
+
+# IAP OAuth client credentials (create client in GCP Console)
+oauth2_client_id     = "your-iap-oauth-client-id.apps.googleusercontent.com"
+oauth2_client_secret = "your-iap-oauth-client-secret"
+# Optional override. When omitted, access defaults to domain:<base domain derived from domain_name>.
+# iap_access_members = ["domain:example.com"]
+
+# Application auth config
+# First apply can use validate_iap_jwt = false and empty audience.
+# After backend service exists, compute real audience and update these values.
+validate_iap_jwt = true
+iap_jwt_audience = "/projects/123456789012/global/backendServices/1234567890123456789"
+org_admin_email  = "admin@example.com"
+google_directory_enabled                     = true
+google_directory_admin_user_email            = "admin@example.com"
+google_directory_scope                       = "https://www.googleapis.com/auth/admin.directory.user.readonly"
+google_directory_org_unit_key_prefix         = "ou"
+google_directory_include_org_unit_hierarchy  = true
+google_directory_custom_attribute_key_prefix = "custom"
+# Provide exactly one:
+# 1) Existing secret name with SA key JSON: google_directory_credentials_secret_name
+# 2) Raw SA key JSON to create/update a managed secret version: google_directory_service_account_key_json
+google_directory_credentials_secret_name     = "fsharp-starter-google-directory-dwd-key"
+# google_directory_service_account_key_json  = "{\"type\":\"service_account\",...}"
+
+# Restrict if needed
+allow_ssh_from = ["35.235.240.0/20"]

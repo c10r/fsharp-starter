@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FsharpStarter.Domain/FsharpStarter.Domain.fsproj" />
+    <ProjectReference Include="../FsharpStarter.Application/FsharpStarter.Application.fsproj" />
+    <ProjectReference Include="../FsharpStarter.Infrastructure/FsharpStarter.Infrastructure.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="src/Controllers/ExamplesController.fs" />
+    <Compile Include="src/Program.fs" />
+  </ItemGroup>
+
+</Project>
