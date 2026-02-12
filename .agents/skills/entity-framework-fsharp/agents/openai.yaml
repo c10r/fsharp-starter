@@ -1,4 +1,4 @@
 interface:
-  display_name: "Entity Framework F#"
-  short_description: "EF Core + SQLite persistence patterns for F# domain models"
-  default_prompt: "Apply EF Core and SQLite best practices for F# option/DU mapping, repository updates, and migration safety."
+  display_name: "EF F# Mapping Guide"
+  short_description: "Map F# value objects/unions through EF Core + JSON boundaries"
+  default_prompt: "Document and implement F# type mapping patterns for EF Core and JSON serialization in hexagonal architecture."
