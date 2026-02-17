@@ -19,6 +19,8 @@ let main args =
     let connectionString =
         builder.Configuration.GetConnectionString("DefaultConnection")
 
+    Persistence.upgradeDatabase connectionString
+
     Persistence.addInfrastructure builder.Services connectionString |> ignore
     builder.Services.AddScoped<ExampleHandler>() |> ignore
 
@@ -41,8 +43,6 @@ let main args =
     if app.Environment.IsDevelopment() then
         app.UseSwagger() |> ignore
         app.UseSwaggerUI() |> ignore
-
-    Persistence.initializeDatabase app.Services
 
     app.UseHttpsRedirection() |> ignore
     app.MapControllers() |> ignore

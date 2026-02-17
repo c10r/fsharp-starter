@@ -13,7 +13,7 @@ It is not an "anything goes" scaffold.
 ## What You Get
 - A canonical backend vertical slice with one controller (`GET` + `POST`)
 - Event-sourced domain aggregate + persisted domain events
-- EF Core + SQLite repository implementation
+- EF Core + SQLite repository implementation with DBUp-managed SQL migrations
 - Test projects wired into the solution
 - Frontend checks/tests and reusable UI components
 - Optional AI skills in `.agents/skills` for common advanced workflows

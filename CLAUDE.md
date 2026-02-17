@@ -48,6 +48,7 @@ API -> Domain
 
 ## Skills
 Optional capabilities are documented under `.agents/skills`:
+- `db-migrations`
 - `entity-framework-fsharp`
 - `new-controller`
 - `event-sourcing-audit`

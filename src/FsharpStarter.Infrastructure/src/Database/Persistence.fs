@@ -1,6 +1,7 @@
 namespace FsharpStarter.Infrastructure.Database
 
-open System
+open System.Reflection
+open DbUp
 open Microsoft.EntityFrameworkCore
 open Microsoft.Extensions.DependencyInjection
 open FsharpStarter.Domain.Ports
@@ -15,7 +16,21 @@ module Persistence =
         services.AddScoped<IExampleRepository, ExampleRepository>() |> ignore
         services
 
-    let initializeDatabase (serviceProvider: IServiceProvider) =
-        use scope = serviceProvider.CreateScope()
-        let dbContext = scope.ServiceProvider.GetRequiredService<FsharpStarterDbContext>()
-        dbContext.Database.EnsureCreated() |> ignore
+    let upgradeDatabase (connectionString: string) =
+        let upgrader =
+            DeployChanges.To
+                .SQLiteDatabase(connectionString)
+                .WithScriptsEmbeddedInAssembly(
+                    Assembly.GetExecutingAssembly(),
+                    (fun (scriptName: string) -> scriptName.Contains("DatabaseUpgradeScripts.DBUP"))
+                )
+                .WithTransactionPerScript()
+                .LogToConsole()
+                .Build()
+
+        let result = upgrader.PerformUpgrade()
+
+        if not result.Successful then
+            match result.Error with
+            | null -> failwith "Failed to upgrade database."
+            | ex -> failwithf "Failed to upgrade database: %s" ex.Message

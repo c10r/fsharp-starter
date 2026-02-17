@@ -1,6 +1,7 @@
 module FsharpStarter.Infrastructure.Tests.ExampleRepositoryTests
 
 open System
+open System.IO
 open Microsoft.Data.Sqlite
 open Microsoft.EntityFrameworkCore
 open FsharpStarter.Domain.Ports
@@ -9,6 +10,33 @@ open FsharpStarter.Domain.ValueObjects
 open FsharpStarter.Infrastructure.Database
 open FsharpStarter.Infrastructure.Database.Repositories
 open Xunit
+
+[<Fact>]
+let ``DBUp upgrade creates schema and journal tables`` () =
+    let dbPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.db")
+    let connectionString = $"Data Source={dbPath}"
+
+    try
+        Persistence.upgradeDatabase connectionString
+
+        use connection = new SqliteConnection(connectionString)
+        connection.Open()
+
+        use command = connection.CreateCommand()
+        command.CommandText <- "SELECT name FROM sqlite_master WHERE type = 'table';"
+
+        use reader = command.ExecuteReader()
+        let mutable tables = Set.empty<string>
+
+        while reader.Read() do
+            tables <- tables.Add(reader.GetString(0))
+
+        Assert.Contains("examples", tables)
+        Assert.Contains("domain_events", tables)
+        Assert.Contains("SchemaVersions", tables)
+    finally
+        if File.Exists(dbPath) then
+            File.Delete(dbPath)
 
 [<Fact>]
 let ``Repository saves events and rehydrates aggregate`` () =
