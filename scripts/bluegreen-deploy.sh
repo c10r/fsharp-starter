@@ -34,6 +34,7 @@ hydrate_from_tofu_output() {
   export GCP_ARTIFACT_REPO="${GCP_ARTIFACT_REPO:-$(jq -r '.artifact_registry_repo_id.value' <<<"$OUT")}" 
   export GCP_VM_ZONE="${GCP_VM_ZONE:-$(jq -r '.vm_zone.value' <<<"$OUT")}" 
   export GCP_MIG_NAME="${GCP_MIG_NAME:-$(jq -r '.managed_instance_group_name.value' <<<"$OUT")}" 
+  export GCP_BACKEND_SERVICE="${GCP_BACKEND_SERVICE:-$(jq -r '.backend_service_name.value // empty' <<<"$OUT")}" 
   export FSHARP_STARTER_DATA_ROOT="${FSHARP_STARTER_DATA_ROOT:-$(jq -r '.data_mount_path.value // ""' <<<"$OUT")}" 
 
   GREEN_VM_NAME="$(jq -r '.bluegreen_vm_name.value // empty' <<<"$OUT")"
@@ -98,10 +99,76 @@ wait_local_health() {
 }
 
 resolve_old_vm() {
-  gcloud compute instance-groups managed list-instances "${GCP_MIG_NAME}" \
+  local mig_vm bluegreen_vm backend_vm labeled_vm
+  mig_vm="$(gcloud compute instance-groups managed list-instances "${GCP_MIG_NAME}" \
     --project "${GCP_PROJECT_ID}" \
     --zone "${GCP_VM_ZONE}" \
-    --format='value(instance.basename())' | head -n1
+    --format='value(instance.basename())' | head -n1)"
+  if [[ -n "${mig_vm}" ]]; then
+    echo "${mig_vm}"
+    return 0
+  fi
+
+  bluegreen_vm="$(jq -r '.bluegreen_vm_name.value // empty' <<<"${OUT:-}")"
+  if [[ -n "${bluegreen_vm}" ]]; then
+    echo "${bluegreen_vm}"
+    return 0
+  fi
+
+  if [[ -n "${GCP_BACKEND_SERVICE:-}" ]]; then
+    backend_vm="$(
+      gcloud compute backend-services get-health "${GCP_BACKEND_SERVICE}" \
+        --project "${GCP_PROJECT_ID}" \
+        --global \
+        --format=json 2>/dev/null \
+        | jq -r '.. | .instance? // empty | capture(".*/instances/(?<name>[^/]+)$").name' 2>/dev/null \
+        | head -n1
+    )"
+    if [[ -n "${backend_vm}" ]]; then
+      echo "${backend_vm}"
+      return 0
+    fi
+  fi
+
+  labeled_vm="$(
+    gcloud compute instances list \
+      --project "${GCP_PROJECT_ID}" \
+      --filter="zone:(${GCP_VM_ZONE}) AND labels.app=fsharp-starter AND status=RUNNING" \
+      --format='value(name)' 2>/dev/null \
+      | head -n1
+  )"
+  if [[ -n "${labeled_vm}" ]]; then
+    echo "${labeled_vm}"
+    return 0
+  fi
+
+  return 1
+}
+
+wait_primary_mig_zero_instances() {
+  local start elapsed target_size instance_count
+  start="$(now)"
+  while true; do
+    target_size="$(gcloud compute instance-groups managed describe "${GCP_MIG_NAME}" \
+      --project "${GCP_PROJECT_ID}" \
+      --zone "${GCP_VM_ZONE}" \
+      --format='value(targetSize)')"
+    instance_count="$(gcloud compute instance-groups managed list-instances "${GCP_MIG_NAME}" \
+      --project "${GCP_PROJECT_ID}" \
+      --zone "${GCP_VM_ZONE}" \
+      --format='value(instance)' | wc -l | tr -d ' ')"
+
+    if [[ "${target_size}" == "0" && "${instance_count}" == "0" ]]; then
+      return 0
+    fi
+
+    elapsed="$(( $(now) - start ))"
+    if (( elapsed > 900 )); then
+      echo "Primary MIG did not scale down to zero instances within 15 minutes (targetSize=${target_size}, instances=${instance_count})" >&2
+      exit 1
+    fi
+    sleep 10
+  done
 }
 
 on_error() {
@@ -169,6 +236,8 @@ wait_local_health "${GREEN_VM_NAME}"
 log "Apply stage 2: route traffic to green backend"
 apply_tofu_state 0 1 true "${TAG}" 0
 GREEN_BACKEND_ENABLED=1
+log "Wait for primary MIG to reach zero instances"
+wait_primary_mig_zero_instances
 
 T1="$(now)"
 TOTAL_SECONDS="$((T1-T0))"

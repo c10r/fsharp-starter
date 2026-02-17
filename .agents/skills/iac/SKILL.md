@@ -24,16 +24,15 @@ Use these cost-focused defaults unless the user requests otherwise:
 2. Implement a generic topology:
 - VPC/subnet
 - VM service account + IAM for registry/logging/secrets
-- one persistent data disk attached with `auto_delete = false`
-- primary MIG behind HTTPS load balancer
+- one persistent data disk used by the blue/green VM
+- primary MIG behind HTTPS load balancer (stateless instances)
 - optional blue-green single VM + unmanaged instance group as alternate backend
 3. Enforce persistent-disk guardrails:
 - Keep `google_compute_disk` in a protected resource with `lifecycle { prevent_destroy = true }`.
 - Model a protected/unprotected disk pair, then select active disk self-link via a local expression.
+- Keep primary instance templates stateless (no attached persistent data disk source).
 - Validate blue-green settings so unsafe combinations fail at plan time.
 4. Apply variable validation to block unsafe rollouts:
-- Require `primary_mig_target_size == 0` when blue-green is enabled.
-- Require `primary_backend_capacity == 0` when blue-green is enabled.
 - Require `preserve_data_disk_on_destroy == true` when blue-green is enabled.
 5. Run infra checks:
 - `tofu fmt -recursive`
@@ -52,12 +51,8 @@ variable "bluegreen_enabled" {
   default = false
 
   validation {
-    condition = !var.bluegreen_enabled || (
-      var.primary_mig_target_size == 0
-      && var.primary_backend_capacity == 0
-      && var.preserve_data_disk_on_destroy
-    )
-    error_message = "When bluegreen_enabled=true, primary_mig_target_size and primary_backend_capacity must be 0, and preserve_data_disk_on_destroy must be true."
+    condition = !var.bluegreen_enabled || var.preserve_data_disk_on_destroy
+    error_message = "When bluegreen_enabled=true, preserve_data_disk_on_destroy must be true."
   }
 }
 ```
