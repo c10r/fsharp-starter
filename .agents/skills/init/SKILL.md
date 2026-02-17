@@ -46,6 +46,7 @@ Use this structure:
    - Keep steps actionable and verifiable.
    - Make the first implementation phase Domain-first and add a "user approval gate" before Application/Infrastructure/API work.
    - In Phase 1, explicitly reference `domain-driven-design` skill as required guidance for modeling aggregates, invariants, errors, and domain events.
+   - For any phase that sets up or changes database models, require `entity-framework-fsharp` as implementation guidance for EF/SQLite mapping, schema alignment, and repository query safety.
    - Include an explicit phase to add an audit log controller, using `event-sourcing-audit` skill guidance.
 
 3. **Final Step Requirement**
@@ -76,6 +77,7 @@ If a phase has only frontend changes, still list backend checks and mark them as
 - Keep Domain pure and framework-free.
 - Keep Application as orchestration/contracts/interfaces.
 - Keep Infrastructure for EF Core/SQLite and integrations.
+- When introducing or updating database models in Infrastructure, explicitly follow `entity-framework-fsharp`.
 - Keep API for controllers, middleware, and DI composition.
 - Do not start Application/Infrastructure/API implementation until the user confirms Domain modeling is acceptable.
 - Preserve compile-order correctness in `.fsproj` files when adding files.

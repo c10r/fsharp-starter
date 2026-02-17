@@ -12,6 +12,7 @@ Review backend code for regressions and missing cross-layer follow-through befor
 2. List findings first, ordered by severity, with file references.
 3. Flag behavioral regressions, runtime failure risks, schema drift, and missing tests.
 4. Add a brief summary only after findings.
+5. For any database model/schema/repository mapping changes, apply `entity-framework-fsharp` guidance as a required review baseline.
 
 ## Backend Review Checklist
 - Verify API contracts are explicit.
@@ -25,6 +26,7 @@ Review backend code for regressions and missing cross-layer follow-through befor
 - Require edge-case tests for invalid/large pagination inputs.
 
 - Verify EF + F# nullability and option safety.
+- For DB model setup or EF mapping changes, explicitly reference `entity-framework-fsharp` and enforce its workflow/guardrails.
 - Guard against null collection assumptions on hydrated entities.
 - Normalize nullable list fields before mapping/iteration.
 - Prefer explicit option equality in query predicates (`field = None` / `field = Some(...)`).

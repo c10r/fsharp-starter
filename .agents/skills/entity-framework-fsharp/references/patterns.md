@@ -8,6 +8,16 @@
 - API JSON converters for domain types
 - Event payload serialization/deserialization
 - Repository usage pattern
+- DBUp schema naming alignment (snake_case vs PascalCase)
+- SQLite query translation guardrails
+- SQLite DDL and migration constraints
+- SQLite locking and transaction behavior
+- Decimal precision strategy
+- Guid storage strategy
+- Collation and case-sensitivity
+- Foreign key enforcement
+- Index design and query plan checks
+- SQLite JSON TEXT guidance
 - Placement map and anti-patterns
 - Implementation checklist for new complex types
 
@@ -185,6 +195,137 @@ let! relatedIds =
 
 Avoid converting IDs to `Guid` in queries unless required by SQL expression translation.
 
+## DBUp Schema Naming Alignment (snake_case vs PascalCase)
+
+Use this whenever DBUp SQL uses snake_case and EF entity properties use PascalCase.
+
+```fsharp
+let users = modelBuilder.Entity<UserRecord>()
+users.ToTable("users") |> ignore
+users.HasKey("Id") |> ignore
+users.Property(fun row -> row.Id).HasColumnName("id") |> ignore
+users.Property(fun row -> row.Email).HasColumnName("email").IsRequired() |> ignore
+users.Property(fun row -> row.DisplayName).HasColumnName("display_name") |> ignore
+users.Property(fun row -> row.AvatarUrl).HasColumnName("avatar_url") |> ignore
+users.Property(fun row -> row.UpdatedAtUtc).HasColumnName("updated_at_utc") |> ignore
+```
+
+Rules:
+- Treat DBUp SQL as source of truth for table/column names.
+- Map every non-matching property with `HasColumnName`.
+- Do not depend on EF implicit naming when conventions differ.
+- Add new DBUp scripts for schema changes; do not rewrite already-applied scripts.
+
+## SQLite Query Translation Guardrails
+
+SQLite provider can reject expressions that other providers accept. Keep repository queries translation-safe.
+
+Problematic pattern:
+
+```fsharp
+query
+    .OrderByDescending(fun row -> row.VisitCount)
+    .ThenByDescending(fun row -> row.UpdatedAtUtc) // DateTimeOffset may fail in SQLite translation
+```
+
+Safer alternatives:
+
+```fsharp
+query
+    .OrderByDescending(fun row -> row.VisitCount)
+    .ThenByDescending(fun row -> row.RowVersion)
+```
+
+or persist sortable UTC text and order by mapped property when appropriate.
+
+Rules:
+- Prefer numeric/int/long columns for tie-break ordering in SQL.
+- Be cautious with `DateTimeOffset` in `OrderBy` and complex expressions.
+- If provider translation fails, simplify expression, then only fallback to client-side ordering when result size is bounded.
+- Confirm translation with integration tests against SQLite, not only in-memory providers.
+
+## SQLite DDL and Migration Constraints
+
+SQLite supports limited `ALTER TABLE` operations. Favor additive and rebuild-safe migrations.
+
+Recommended DBUp flow for structural changes:
+1. Add new nullable/defaulted column.
+2. Backfill data.
+3. Switch reads/writes in app code.
+4. Rebuild table only when strictly required (create new table, copy data, swap names) in a dedicated migration script.
+
+Rules:
+- Do not assume SQL Server/Postgres DDL features exist.
+- Keep migrations idempotent where possible.
+- Never edit previously-applied DBUp scripts; add new numbered scripts.
+
+## SQLite Locking and Transaction Behavior
+
+SQLite permits many readers but only one writer at a time.
+
+Rules:
+- Keep write transactions short.
+- Avoid long-running transactions around network or heavy CPU work.
+- Expect transient `database is locked` under contention and add bounded retries where appropriate.
+- Prefer WAL mode for concurrent read/write workloads when operationally acceptable.
+
+## Decimal Precision Strategy
+
+SQLite has dynamic typing; precision can drift if storage is not explicit.
+
+Rules:
+- For money/precise values, prefer scaled integers (for example cents) or explicit canonical string format.
+- Keep EF converter and DBUp column contract aligned.
+- Add round-trip tests for boundary precision values.
+
+## Guid Storage Strategy
+
+Choose one representation and keep it consistent across SQL + EF mappings.
+
+Options:
+- `TEXT` GUID (human-readable, common in mixed tooling).
+- `BLOB` GUID (compact, requires stricter conversion handling).
+
+Rules:
+- Do not mix `TEXT` and `BLOB` for the same logical key.
+- Ensure joins and indexes use the same representation on both sides.
+
+## Collation and Case-Sensitivity
+
+Default SQLite collation and comparison semantics may not match business rules.
+
+Rules:
+- Define whether lookup/uniqueness is case-sensitive per field.
+- Normalize values at write-time when case-insensitive behavior is required (for example lowercased email).
+- Add matching indexes for normalized lookup columns.
+
+## Foreign Key Enforcement
+
+SQLite foreign keys are runtime-config sensitive.
+
+Rules:
+- Make FK expectations explicit in schema and runtime.
+- Verify FK behavior in integration tests (insert/update/delete constraints).
+- Do not assume FK checks are enabled unless validated in your runtime setup.
+
+## Index Design and Query Plan Checks
+
+SQLite benefits from indexes shaped to actual predicates and ordering.
+
+Rules:
+- Create composite indexes that match common `WHERE` + `ORDER BY`.
+- Re-check index coverage when query shape changes.
+- Validate critical query plans with SQLite tooling (`EXPLAIN QUERY PLAN`) during performance-sensitive changes.
+
+## SQLite JSON TEXT Guidance
+
+When persisting JSON in TEXT columns:
+
+Rules:
+- Store explicit, version-tolerant serialized shapes.
+- Keep serializer options stable for event/audit payloads.
+- Validate compatibility if SQLite JSON functions are used; do not assume extension availability across environments.
+
 ## Placement Map and Anti-Patterns
 
 Do:
@@ -204,13 +345,17 @@ Do not:
 1. Define/extend domain type with `Create` and `ToString` (or stable structured representation).
 2. Add DB migration for new column(s) if needed.
 3. Add EF `ValueConverter` and `entity.Property(...).HasConversion(...)` in `<Project>DbContext.fs`.
-4. Add API `JsonConverter` if type appears in requests/responses.
-5. Register API converter in `Program.fs`.
-6. Update repositories only if query/use-case logic changed.
-7. Add tests:
+4. Map table/column names explicitly when SQL naming differs (for example snake_case).
+5. Add API `JsonConverter` if type appears in requests/responses.
+6. Register API converter in `Program.fs`.
+7. Update repositories only if query/use-case logic changed.
+8. Add tests:
 - round-trip domain value -> DB -> domain value
 - invalid DB payload behavior
 - API JSON serialization and deserialization for the type
-8. Run:
+- SQLite translation regression tests for ordering/filtering
+ - migration safety test/verification for altered schema paths
+ - precision and collation behavior tests when relevant
+9. Run:
 - `dotnet build <Project>.sln -c Release`
 - `dotnet test <Project>.sln`
