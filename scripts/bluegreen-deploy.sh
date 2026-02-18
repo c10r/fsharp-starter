@@ -196,7 +196,7 @@ load_tofu_outputs
 : "${GCP_MIG_NAME:?}"
 
 IMAGE_NAME="${IMAGE_NAME:-fsharp-starter-api}"
-TAG="${TAG:-$(git rev-parse --short HEAD)}"
+TAG="${TAG:-latest}"
 REGISTRY_HOST="${GCP_REGION}-docker.pkg.dev"
 IMAGE_URI="${REGISTRY_HOST}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
 DATA_ROOT="${FSHARP_STARTER_DATA_ROOT:-$REMOTE_DATA_ROOT_DEFAULT}"

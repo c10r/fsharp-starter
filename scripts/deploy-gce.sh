@@ -87,7 +87,7 @@ resolve_target_vm_name() {
 
 IMAGE_NAME="${IMAGE_NAME:-fsharp-starter-api}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/fsharp-starter}"
-TAG="${TAG:-$(git rev-parse --short HEAD)}"
+TAG="${TAG:-latest}"
 REGISTRY_HOST="${GCP_REGION}-docker.pkg.dev"
 IMAGE_URI="${REGISTRY_HOST}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
 LATEST_IMAGE_URI="${REGISTRY_HOST}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPO}/${IMAGE_NAME}:latest"
