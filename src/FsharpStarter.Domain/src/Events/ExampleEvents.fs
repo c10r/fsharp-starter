@@ -12,7 +12,7 @@ type ExampleDomainEvent =
     { EventId: Guid
       AggregateId: ExampleId
       Version: int
-      OccurredAt: DateTimeOffset
+      OccurredAt: DateTime
       EventType: ExampleEventType
       Data: ExampleEventData }
 

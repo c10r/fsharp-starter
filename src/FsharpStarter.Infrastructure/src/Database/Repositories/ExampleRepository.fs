@@ -12,6 +12,9 @@ open FsharpStarter.Domain.ValueObjects
 open FsharpStarter.Infrastructure.Database
 
 type ExampleRepository(dbContext: FsharpStarterDbContext) =
+    let normalizeUtc (value: DateTime) =
+        DateTime.SpecifyKind(value, DateTimeKind.Utc)
+
     let serializePayload (domainEvent: ExampleDomainEvent) =
         JsonSerializer.Serialize(domainEvent.Data)
 
@@ -29,7 +32,7 @@ type ExampleRepository(dbContext: FsharpStarterDbContext) =
                         { EventId = row.EventId
                           AggregateId = ExampleId.OfGuid row.AggregateId
                           Version = row.Version
-                          OccurredAt = row.OccurredAt
+                          OccurredAt = normalizeUtc row.OccurredAt
                           EventType = eventType
                           Data = payload }
             with exn ->
@@ -55,7 +58,7 @@ type ExampleRepository(dbContext: FsharpStarterDbContext) =
                             let exampleRow = ExampleRecord()
                             exampleRow.Id <- id
                             exampleRow.Name <- state.Name
-                            exampleRow.CreatedAt <- state.CreatedAt
+                            exampleRow.CreatedAt <- normalizeUtc state.CreatedAt
                             exampleRow.Version <- aggregate.Version
 
                             dbContext.Examples.Add(exampleRow) |> ignore
@@ -65,7 +68,7 @@ type ExampleRepository(dbContext: FsharpStarterDbContext) =
                                 eventRow.EventId <- domainEvent.EventId
                                 eventRow.AggregateId <- ExampleId.value domainEvent.AggregateId
                                 eventRow.Version <- domainEvent.Version
-                                eventRow.OccurredAt <- domainEvent.OccurredAt
+                                eventRow.OccurredAt <- normalizeUtc domainEvent.OccurredAt
                                 eventRow.EventType <- ExampleDomainEvent.eventTypeToString domainEvent.EventType
                                 eventRow.PayloadJson <- serializePayload domainEvent
                                 dbContext.DomainEvents.Add(eventRow) |> ignore

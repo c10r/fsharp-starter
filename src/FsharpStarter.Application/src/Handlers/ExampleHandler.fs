@@ -8,8 +8,8 @@ open FsharpStarter.Domain
 open FsharpStarter.Domain.Entities
 open FsharpStarter.Domain.ValueObjects
 
-type ExampleHandler(repository: IExampleRepository, clock: unit -> DateTimeOffset) =
-    new(repository: IExampleRepository) = ExampleHandler(repository, fun () -> DateTimeOffset.UtcNow)
+type ExampleHandler(repository: IExampleRepository, clock: unit -> DateTime) =
+    new(repository: IExampleRepository) = ExampleHandler(repository, fun () -> DateTime.UtcNow)
 
     member _.CreateAsync(command: CreateExampleCommand) =
         async {

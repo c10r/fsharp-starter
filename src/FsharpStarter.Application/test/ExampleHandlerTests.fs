@@ -33,7 +33,7 @@ type InMemoryExampleRepository() =
 [<Fact>]
 let ``Create then get returns canonical response`` () =
     let repository = InMemoryExampleRepository() :> IExampleRepository
-    let fixedClock = fun () -> DateTimeOffset.Parse("2026-01-01T00:00:00Z")
+    let fixedClock = fun () -> DateTime.Parse("2026-01-01T00:00:00Z")
     let handler = ExampleHandler(repository, fixedClock)
 
     let created = handler.CreateAsync({ Name = "Example" }) |> Async.RunSynchronously

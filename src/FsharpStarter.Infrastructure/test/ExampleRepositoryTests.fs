@@ -52,7 +52,7 @@ let ``Repository saves events and rehydrates aggregate`` () =
     let repository = ExampleRepository(dbContext) :> IExampleRepository
 
     let aggregate =
-        match ExampleAggregate.Create(ExampleId.New(), "Stored Example", DateTimeOffset.UtcNow) with
+        match ExampleAggregate.Create(ExampleId.New(), "Stored Example", DateTime.UtcNow) with
         | Error error -> failwithf "Expected aggregate creation success but got %A" error
         | Ok value -> value
 

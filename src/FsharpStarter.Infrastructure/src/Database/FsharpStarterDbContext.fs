@@ -6,14 +6,14 @@ open Microsoft.EntityFrameworkCore
 type ExampleRecord() =
     member val Id = Guid.Empty with get, set
     member val Name = String.Empty with get, set
-    member val CreatedAt = DateTimeOffset.MinValue with get, set
+    member val CreatedAt = DateTime.MinValue with get, set
     member val Version = 0 with get, set
 
 type DomainEventRecord() =
     member val EventId = Guid.Empty with get, set
     member val AggregateId = Guid.Empty with get, set
     member val Version = 0 with get, set
-    member val OccurredAt = DateTimeOffset.MinValue with get, set
+    member val OccurredAt = DateTime.MinValue with get, set
     member val EventType = String.Empty with get, set
     member val PayloadJson = String.Empty with get, set
 

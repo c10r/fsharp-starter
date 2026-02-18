@@ -9,5 +9,5 @@ type CreateExampleRequestDto = { Name: string }
 type ExampleResponseDto =
     { Id: Guid
       Name: string
-      CreatedAt: DateTimeOffset
+      CreatedAt: DateTime
       Version: int }

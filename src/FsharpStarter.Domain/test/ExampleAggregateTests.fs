@@ -9,7 +9,7 @@ open Xunit
 [<Fact>]
 let ``Create emits ExampleCreated event with normalized name`` () =
     let id = ExampleId.New()
-    let createdAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z")
+    let createdAt = DateTime.Parse("2026-01-01T00:00:00Z")
 
     let result = ExampleAggregate.Create(id, "  Canonical Example  ", createdAt)
 
@@ -26,7 +26,7 @@ let ``Create emits ExampleCreated event with normalized name`` () =
 [<Fact>]
 let ``FromHistory rehydrates aggregate state`` () =
     let id = ExampleId.New()
-    let occurredAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z")
+    let occurredAt = DateTime.Parse("2026-01-01T00:00:00Z")
 
     let history =
         [ { EventId = Guid.NewGuid()

@@ -8,12 +8,15 @@ open FsharpStarter.Domain.ValueObjects
 type ExampleState =
     { Id: ExampleId
       Name: string
-      CreatedAt: DateTimeOffset }
+      CreatedAt: DateTime }
 
 type ExampleAggregate private () =
     inherit EventSourcingAggregate<ExampleDomainEvent>()
 
     let mutable state: ExampleState option = None
+
+    static member private NormalizeUtc(value: DateTime) =
+        DateTime.SpecifyKind(value, DateTimeKind.Utc)
 
     member _.State = state
 
@@ -24,21 +27,22 @@ type ExampleAggregate private () =
                 Some
                     { Id = domainEvent.AggregateId
                       Name = domainEvent.Data.Name
-                      CreatedAt = domainEvent.OccurredAt }
+                      CreatedAt = ExampleAggregate.NormalizeUtc domainEvent.OccurredAt }
 
     member private _.EventVersion(domainEvent: ExampleDomainEvent) = domainEvent.Version
 
-    static member Create(id: ExampleId, name: string, createdAt: DateTimeOffset) =
+    static member Create(id: ExampleId, name: string, createdAt: DateTime) =
         if String.IsNullOrWhiteSpace(name) then
             Error(ValidationError "Name is required.")
         else
             let aggregate = ExampleAggregate()
+            let normalizedCreatedAt = ExampleAggregate.NormalizeUtc createdAt
 
             let eventData =
                 { EventId = Guid.NewGuid()
                   AggregateId = id
                   Version = 1
-                  OccurredAt = createdAt
+                  OccurredAt = normalizedCreatedAt
                   EventType = ExampleCreated
                   Data = { Name = name.Trim() } }
 

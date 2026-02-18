@@ -37,7 +37,7 @@ let ``POST returns CreatedAtAction and GET returns Ok`` () =
     let repository = InMemoryExampleRepository() :> IExampleRepository
 
     let exampleHandler =
-        ExampleHandler(repository, fun () -> DateTimeOffset.Parse("2026-01-01T00:00:00Z"))
+        ExampleHandler(repository, fun () -> DateTime.Parse("2026-01-01T00:00:00Z"))
 
     use activitySource = new ActivitySource("Tests")
     let controller = ExamplesController(exampleHandler, activitySource)
