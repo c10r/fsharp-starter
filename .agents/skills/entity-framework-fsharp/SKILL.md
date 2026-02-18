@@ -21,6 +21,11 @@ Use this skill for both implementation and debugging:
 - Nullability/option round-trip bugs
 - PascalCase model names vs snake_case SQL columns
 
+Timestamp policy for this starter:
+- Never use `DateTimeOffset` in Domain/Application/Infrastructure/DTOs/EF models.
+- Use UTC `DateTime` consistently end-to-end.
+- For persisted UTC timestamps, normalize with `DateTime.SpecifyKind(value, DateTimeKind.Utc)` at boundaries.
+
 ## Architecture Placement
 
 Keep mapping responsibilities in these layers.
@@ -65,6 +70,7 @@ Keep mapping responsibilities in these layers.
 - In `DbContext`, map table names and column names explicitly (`ToTable`, `HasColumnName`).
 - When SQL is snake_case, always map EF properties to snake_case columns.
 - Add `ValueConverter`s only where representation differs by type.
+- Enforce UTC `DateTime` for temporal columns; do not introduce `DateTimeOffset`.
 
 4. Map API JSON boundary
 - Add/update converter in `src/<Project>.Application/src/DTOs/JsonConverters.fs`.
@@ -74,7 +80,7 @@ Keep mapping responsibilities in these layers.
 - Query using domain value objects directly (for EF translation).
 - Keep Save/Add/Update code free of ad-hoc string/Guid conversions.
 - Avoid SQLite-unsupported constructs in SQL translation:
-  - `DateTimeOffset` ordering in SQL (`OrderBy`/`ThenBy`) may fail.
+  - `DateTimeOffset` ordering in SQL (`OrderBy`/`ThenBy`) may fail; do not use `DateTimeOffset`.
   - prefer numeric/text tie-breakers (`RowVersion`, `created_at_utc` text form) or split to client-side ordering only when safe.
 
 6. Run checks
@@ -99,6 +105,7 @@ Load `references/patterns.md` and adapt the templates:
 Before merging EF + SQLite changes, verify:
 - DBUp migration is additive and safe for SQLite `ALTER TABLE` limitations.
 - Query ordering/filtering translates in SQLite provider (not only in-memory tests).
+- No `DateTimeOffset` exists in touched code (`rg -n "DateTimeOffset" src` should return no matches).
 - Write paths are short transactions; lock contention risk is addressed.
 - Precision-sensitive numeric fields (money/rates) use explicit storage strategy.
 - `Guid` representation is consistent across SQL and EF mapping.
