@@ -22,14 +22,30 @@ pushd "${INFRA_DIR}" >/dev/null
 output_json="$(tofu output -json)"
 popd >/dev/null
 
-export GCP_PROJECT_ID="$(jq -r '.project_id.value' <<<"${output_json}")"
-export GCP_REGION="$(jq -r '.artifact_registry_location.value' <<<"${output_json}")"
-export GCP_ARTIFACT_REPO="$(jq -r '.artifact_registry_repo_id.value' <<<"${output_json}")"
-export GCP_VM_ZONE="$(jq -r '.vm_zone.value' <<<"${output_json}")"
+if ! jq -e 'type == "object" and length > 0' >/dev/null <<<"${output_json}"; then
+  echo "OpenTofu outputs are missing in ${INFRA_DIR}. Run 'tofu apply' first." >&2
+  exit 1
+fi
+
+require_output() {
+  local key="$1"
+  local value
+  value="$(jq -r --arg key "${key}" '.[$key].value // empty' <<<"${output_json}")"
+  if [[ -z "${value}" || "${value}" == "null" ]]; then
+    echo "Missing required OpenTofu output: ${key}" >&2
+    exit 1
+  fi
+  printf '%s' "${value}"
+}
+
+export GCP_PROJECT_ID="$(require_output project_id)"
+export GCP_REGION="$(require_output artifact_registry_location)"
+export GCP_ARTIFACT_REPO="$(require_output artifact_registry_repo_id)"
+export GCP_VM_ZONE="$(require_output vm_zone)"
 export GCP_BACKEND_SERVICE="$(jq -r '.backend_service_name.value? // empty' <<<"${output_json}")"
 export GCP_BLUEGREEN_VM_NAME="$(jq -r '.bluegreen_vm_name.value? // empty' <<<"${output_json}")"
-export FSHARP_STARTER_IAP_JWT_AUDIENCE="$(jq -r '.iap_jwt_audience.value' <<<"${output_json}")"
-export FSHARP_STARTER_DATA_ROOT="$(jq -r '.data_mount_path.value' <<<"${output_json}")"
+export FSHARP_STARTER_IAP_JWT_AUDIENCE="$(require_output iap_jwt_audience)"
+export FSHARP_STARTER_DATA_ROOT="$(require_output data_mount_path)"
 export FSHARP_STARTER_VALIDATE_IAP_JWT="$(jq -r '.validate_iap_jwt.value? // "true"' <<<"${output_json}")"
 export FSHARP_STARTER_GOOGLE_DIRECTORY_ENABLED="$(jq -r '.google_directory_enabled.value? // "false"' <<<"${output_json}")"
 export FSHARP_STARTER_GOOGLE_DIRECTORY_ADMIN_USER_EMAIL="$(jq -r '.google_directory_admin_user_email.value? // empty' <<<"${output_json}")"
@@ -44,12 +60,7 @@ if [[ -n "${MIG_NAME}" ]]; then
   export GCP_MIG_NAME="${MIG_NAME}"
   unset GCP_VM_NAME || true
 else
-  export GCP_VM_NAME="$(jq -r '.vm_name.value' <<<"${output_json}")"
-fi
-
-if [[ "${FSHARP_STARTER_IAP_JWT_AUDIENCE}" == "" || "${FSHARP_STARTER_IAP_JWT_AUDIENCE}" == "null" ]]; then
-  echo "iap_jwt_audience output is empty. Set iap_jwt_audience in OpenTofu variables first." >&2
-  exit 1
+  export GCP_VM_NAME="$(require_output vm_name)"
 fi
 
 if [[ -z "${FSHARP_STARTER_ORG_ADMIN_EMAIL:-}" ]]; then
@@ -58,5 +69,7 @@ if [[ -z "${FSHARP_STARTER_ORG_ADMIN_EMAIL:-}" ]]; then
     export FSHARP_STARTER_ORG_ADMIN_EMAIL="${FSHARP_STARTER_ORG_ADMIN_EMAIL_FROM_TF}"
   fi
 fi
+
+export REMOTE_DIR="${REMOTE_DIR:-/opt/fsharp-starter}"
 
 "$(dirname "$0")/deploy-gce.sh"

@@ -86,7 +86,7 @@ resolve_target_vm_name() {
 }
 
 IMAGE_NAME="${IMAGE_NAME:-fsharp-starter-api}"
-REMOTE_DIR="${REMOTE_DIR:-~/fsharp-starter}"
+REMOTE_DIR="${REMOTE_DIR:-/opt/fsharp-starter}"
 TAG="${TAG:-$(git rev-parse --short HEAD)}"
 REGISTRY_HOST="${GCP_REGION}-docker.pkg.dev"
 IMAGE_URI="${REGISTRY_HOST}/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPO}/${IMAGE_NAME}:${TAG}"
@@ -159,18 +159,23 @@ FSHARP_STARTER_DATA_ROOT=${FSHARP_STARTER_DATA_ROOT:-/mnt/fsharp-starter-data}
 EOF
 
 echo "Copying compose bundle to VM: ${TARGET_VM_NAME}"
-gcloud compute ssh "${TARGET_VM_NAME}" --zone "${GCP_VM_ZONE}" "${ssh_iap_flag[@]}" --command "mkdir -p ${REMOTE_DIR}"
+REMOTE_STAGE_DIR="/tmp/fsharp-starter-deploy-$$"
+gcloud compute ssh "${TARGET_VM_NAME}" --zone "${GCP_VM_ZONE}" "${ssh_iap_flag[@]}" --command "set -euo pipefail; sudo mkdir -p '${REMOTE_DIR}'; mkdir -p '${REMOTE_STAGE_DIR}'"
 gcloud compute scp docker-compose.gce.yml "${tmp_env_file}" \
-  "${TARGET_VM_NAME}:${REMOTE_DIR}/" \
+  "${TARGET_VM_NAME}:${REMOTE_STAGE_DIR}/" \
   --zone "${GCP_VM_ZONE}" \
   "${ssh_iap_flag[@]}"
+gcloud compute ssh "${TARGET_VM_NAME}" --zone "${GCP_VM_ZONE}" "${ssh_iap_flag[@]}" --command "
+  set -euo pipefail
+  sudo install -m 0644 '${REMOTE_STAGE_DIR}/docker-compose.gce.yml' '${REMOTE_DIR}/docker-compose.gce.yml'
+  sudo install -m 0600 '${REMOTE_STAGE_DIR}/$(basename "${tmp_env_file}")' '${REMOTE_DIR}/.env'
+  rm -rf '${REMOTE_STAGE_DIR}'
+"
 
 echo "Deploying containers on VM"
 gcloud compute ssh "${TARGET_VM_NAME}" --zone "${GCP_VM_ZONE}" "${ssh_iap_flag[@]}" --command "
   set -euo pipefail
   cd ${REMOTE_DIR}
-  mv -f $(basename "${tmp_env_file}") .env
-  source .env
   if ! command -v docker >/dev/null 2>&1; then
     sudo apt-get update
     sudo apt-get install -y docker.io

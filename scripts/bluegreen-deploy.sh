@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Blue/green deploy flow for the OpenTofu model in infra/opentofu:
-# 1) Optional preflight SQLite backup from the current primary MIG instance.
+# 1) Mandatory preflight SQLite backup from the current primary MIG instance.
 # 2) Build and push image tag.
 # 3) Apply OpenTofu with green enabled and primary drained (both capacities 0).
 # 4) Wait for green local health check.
