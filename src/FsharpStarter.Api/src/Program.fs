@@ -45,6 +45,8 @@ let main args =
         app.UseSwaggerUI() |> ignore
 
     app.UseHttpsRedirection() |> ignore
+    app.UseStaticFiles() |> ignore
     app.MapControllers() |> ignore
+    app.MapFallbackToFile("index.html") |> ignore
     app.Run()
     0
