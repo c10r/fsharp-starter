@@ -123,6 +123,17 @@ tofu init -backend-config=backend.hcl
 tofu apply
 ```
 
+Both stacks pin GCP location settings in code:
+- project: `wonderly-idp-sso`
+- region: `us-central1`
+- zone: `us-central1-a`
+
+Infrastructure naming now derives from a single `project_name` input:
+- default state bucket: `iac-state-<project-name>`
+- default GitHub repo: `internal-tools-<project-name>`
+- default domain: `<project-name>.wonderly.info`
+- default deploy branch: `master`
+
 ## Template Guardrail Script
 ```bash
 scripts/template-sanity-check.sh

@@ -64,9 +64,11 @@ hydrate_from_tofu_output() {
   export GCP_PROJECT_ID="${GCP_PROJECT_ID:-$(jq -r '.project_id.value' <<<"$OUT")}" 
   export GCP_REGION="${GCP_REGION:-$(jq -r '.artifact_registry_location.value' <<<"$OUT")}" 
   export GCP_ARTIFACT_REPO="${GCP_ARTIFACT_REPO:-$(jq -r '.artifact_registry_repo_id.value' <<<"$OUT")}" 
+  export IMAGE_NAME="${IMAGE_NAME:-$(jq -r '.image_name.value // "fsharp-starter-api"' <<<"$OUT")}" 
   export GCP_VM_ZONE="${GCP_VM_ZONE:-$(jq -r '.vm_zone.value' <<<"$OUT")}" 
   export GCP_MIG_NAME="${GCP_MIG_NAME:-$(jq -r '.managed_instance_group_name.value' <<<"$OUT")}" 
   export GCP_BACKEND_SERVICE="${GCP_BACKEND_SERVICE:-$(jq -r '.backend_service_name.value // empty' <<<"$OUT")}" 
+  export GCP_APP_LABEL="${GCP_APP_LABEL:-$(jq -r '.app_label.value // "fsharp-starter"' <<<"$OUT")}" 
   export FSHARP_STARTER_DATA_ROOT="${FSHARP_STARTER_DATA_ROOT:-$(jq -r '.data_mount_path.value // ""' <<<"$OUT")}" 
 
   GREEN_VM_NAME="$(jq -r '.bluegreen_vm_name.value // empty' <<<"$OUT")"
@@ -167,7 +169,7 @@ resolve_old_vm() {
   labeled_vm="$(
     gcloud compute instances list \
       --project "${GCP_PROJECT_ID}" \
-      --filter="zone:(${GCP_VM_ZONE}) AND labels.app=fsharp-starter AND status=RUNNING" \
+      --filter="zone:(${GCP_VM_ZONE}) AND labels.app=${GCP_APP_LABEL} AND status=RUNNING" \
       --format='value(name)' 2>/dev/null \
       | head -n1
   )"

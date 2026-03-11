@@ -1,2 +1,2 @@
-bucket = "replace-me-fsharp-starter-tfstate"
-prefix = "fsharp-starter/dev"
+bucket = "iac-state-your-project-name"
+prefix = "your-project-name/dev"

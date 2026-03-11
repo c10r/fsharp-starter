@@ -1,27 +1,23 @@
-variable "project_id" {
-  description = "GCP project ID"
+variable "project_name" {
+  description = "Human-readable project name. Used to derive kebab-case defaults for naming and domain."
   type        = string
-}
 
-variable "region" {
-  description = "GCP region"
-  type        = string
-}
-
-variable "zone" {
-  description = "GCP zone"
-  type        = string
+  validation {
+    condition     = trimspace(var.project_name) != ""
+    error_message = "Set project_name."
+  }
 }
 
 variable "name_prefix" {
-  description = "Prefix used for resource names"
+  description = "Optional override for the prefix used for resource names. Defaults to the kebab-case project name."
   type        = string
-  default     = "fsharp-starter"
+  default     = ""
 }
 
 variable "domain_name" {
-  description = "Public DNS name used for HTTPS (e.g. fsharp-starter.example.com)"
+  description = "Optional override for the public DNS name used for HTTPS. Defaults to <project-name>.wonderly.info."
   type        = string
+  default     = ""
 }
 
 variable "dns_managed_zone" {
@@ -116,9 +112,9 @@ variable "primary_mig_target_size" {
 }
 
 variable "artifact_registry_repo" {
-  description = "Artifact Registry Docker repository name"
+  description = "Optional override for the Artifact Registry Docker repository name. Defaults to the kebab-case project name."
   type        = string
-  default     = "fsharp-starter"
+  default     = ""
 }
 
 variable "artifact_registry_location" {
@@ -128,9 +124,9 @@ variable "artifact_registry_location" {
 }
 
 variable "image_name" {
-  description = "Container image name within Artifact Registry"
+  description = "Optional override for the container image name within Artifact Registry. Defaults to <project-name>-api."
   type        = string
-  default     = "fsharp-starter-api"
+  default     = ""
 }
 
 variable "initial_image_tag" {
@@ -239,9 +235,9 @@ variable "data_disk_type" {
 }
 
 variable "data_mount_path" {
-  description = "Mount path used for the persistent data disk"
+  description = "Optional override for the persistent data disk mount path. Defaults to /mnt/<project-name>-data."
   type        = string
-  default     = "/mnt/fsharp-starter-data"
+  default     = ""
 }
 
 variable "preserve_data_disk_on_destroy" {

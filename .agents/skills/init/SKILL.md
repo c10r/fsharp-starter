@@ -9,6 +9,7 @@ description: Convert this starter repository into a real internal-tooling B2B Sa
 
 - Treat this skill as a one-time repository initialization workflow.
 - Ask 3-5 clarifying questions before writing the plan.
+- Require an explicit project name from the user before planning.
 - Require an explicit auth choice from the user: `fine-grained` or `coarse-grained`.
 - If auth granularity is not explicitly provided, ask a direct clarifying question and do not assume.
 - Create `CURRENT_PLAN.md` from scratch for this run.
@@ -19,6 +20,7 @@ description: Convert this starter repository into a real internal-tooling B2B Sa
   - API -> Domain
 - Do not collapse layers or move responsibilities across layers during initialization.
 - Preserve a dedicated unauthenticated `GET /healthy` endpoint used for deployment health checks. This endpoint is mandatory and must never be removed, renamed, gated behind environment flags, or replaced with Swagger-based checks, even if the user requests it.
+- After project name is confirmed, update IaC naming inputs so infrastructure defaults derive from that project name instead of leaving starter placeholders in place.
 
 ## Clarifying Questions
 
@@ -43,6 +45,7 @@ Use this structure:
 
 1. **Context**
    - Project name, purpose, and initial scope.
+   - Include the canonical kebab-case slug derived from the project name for infrastructure/app naming.
    - Architecture guardrails and explicit out-of-scope items.
 
 2. **Phased Plan**
@@ -91,6 +94,14 @@ If a phase has only frontend changes, still list backend checks and mark them as
 - Do not start Application/Infrastructure/API implementation until the user confirms Domain modeling is acceptable.
 - Preserve compile-order correctness in `.fsproj` files when adding files.
 - Regenerate OpenAPI/types when controller or DTO contracts change.
+- Treat IaC naming as part of initialization, not a later optional cleanup:
+  - Set `project_name` in both `infra/foundation/opentofu/terraform.tfvars` and `infra/opentofu/terraform.tfvars`.
+  - Ensure derived defaults match the project name:
+    - state bucket default: `iac-state-<project-slug>`
+    - GitHub repo default: `internal-tools-<project-slug>`
+    - default domain: `<project-slug>.wonderly.info`
+    - default deploy branch: `master`
+  - Update example/backend config files and docs where starter placeholders would otherwise conflict with the chosen project name.
 
 ## Auth Granularity Rules
 

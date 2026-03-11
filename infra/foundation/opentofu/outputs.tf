@@ -1,5 +1,5 @@
 output "project_id" {
-  value       = var.project_id
+  value       = local.project_id
   description = "GCP project ID used by the foundation stack"
 }
 
@@ -11,6 +11,11 @@ output "project_number" {
 output "terraform_state_bucket_name" {
   value       = google_storage_bucket.terraform_state.name
   description = "GCS bucket name used for OpenTofu remote state"
+}
+
+output "github_repository_name" {
+  value       = local.github_repository_name
+  description = "GitHub repository name allowed to deploy"
 }
 
 output "github_workload_identity_pool_name" {

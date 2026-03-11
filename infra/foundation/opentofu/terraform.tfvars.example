@@ -1,8 +1,7 @@
-project_id = "my-gcp-project"
-region     = "us-central1"
+project_name = "My Internal Tool"
 
-state_bucket_name = "replace-me-fsharp-starter-tfstate"
-
-github_repository_owner = "your-github-org"
-github_repository_name  = "fsharp-starter"
-github_deploy_branch    = "refs/heads/main"
+# Optional overrides:
+# state_bucket_name = "iac-state-my-internal-tool"
+# github_repository_owner = "wonderly"
+# github_repository_name  = "internal-tools-my-internal-tool"
+# github_deploy_branch    = "master"

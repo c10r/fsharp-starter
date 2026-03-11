@@ -72,7 +72,7 @@ resolve_target_vm_name() {
   labeled_vm_name="$(
     gcloud compute instances list \
       --project "${GCP_PROJECT_ID}" \
-      --filter="zone:(${GCP_VM_ZONE}) AND labels.app=fsharp-starter AND status=RUNNING" \
+      --filter="zone:(${GCP_VM_ZONE}) AND labels.app=${GCP_APP_LABEL:-fsharp-starter} AND status=RUNNING" \
       --format='value(name)' 2>/dev/null \
       | head -n1
   )"

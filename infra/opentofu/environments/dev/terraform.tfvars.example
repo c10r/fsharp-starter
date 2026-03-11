@@ -1,19 +1,18 @@
-project_id                = "my-gcp-project"
-region                    = "us-central1"
-zone                      = "us-central1-a"
-name_prefix               = "fsharp-starter"
-domain_name               = "fsharp-starter.example.com"
+project_name              = "My Internal Tool"
+# Optional overrides:
+# name_prefix             = "my-internal-tool"
+# domain_name             = "my-internal-tool.wonderly.info"
 dns_managed_zone          = "" # optional
 
-artifact_registry_repo     = "fsharp-starter"
+# artifact_registry_repo   = "my-internal-tool"
 artifact_registry_location = "us-central1"
-image_name                 = "fsharp-starter-api"
+# image_name               = "my-internal-tool-api"
 initial_image_tag          = "latest"
 machine_type               = "e2-micro"
 boot_disk_size_gb          = 10
 data_disk_size_gb          = 1
 data_disk_type             = "pd-balanced"
-data_mount_path            = "/mnt/fsharp-starter-data"
+# data_mount_path          = "/mnt/my-internal-tool-data"
 preserve_data_disk_on_destroy = true
 artifact_cleanup_policy_dry_run = false
 artifact_keep_recent_count      = 5
@@ -40,7 +39,7 @@ google_directory_custom_attribute_key_prefix = "custom"
 # Provide exactly one:
 # 1) Existing secret name with SA key JSON: google_directory_credentials_secret_name
 # 2) Raw SA key JSON to create/update a managed secret version: google_directory_service_account_key_json
-google_directory_credentials_secret_name     = "fsharp-starter-google-directory-dwd-key"
+# google_directory_credentials_secret_name   = "my-internal-tool-google-directory-dwd-key"
 # google_directory_service_account_key_json  = "{\"type\":\"service_account\",...}"
 
 # Restrict if needed

@@ -1,10 +1,10 @@
 output "vm_name" {
-  value       = "${var.name_prefix}-vm"
+  value       = local.vm_name
   description = "Base instance name used by the managed instance group"
 }
 
 output "vm_zone" {
-  value       = var.zone
+  value       = local.zone
   description = "Compute instance zone"
 }
 
@@ -34,7 +34,7 @@ output "load_balancer_ip" {
 }
 
 output "https_url" {
-  value       = "https://${var.domain_name}/"
+  value       = "https://${local.domain_name}/"
   description = "Public FsharpStarter URL"
 }
 
@@ -44,7 +44,7 @@ output "artifact_registry_repo" {
 }
 
 output "project_id" {
-  value       = var.project_id
+  value       = local.project_id
   description = "GCP project ID used by infra"
 }
 
@@ -54,8 +54,18 @@ output "artifact_registry_location" {
 }
 
 output "artifact_registry_repo_id" {
-  value       = var.artifact_registry_repo
+  value       = local.artifact_registry_repo
   description = "Artifact Registry repository ID used by infra"
+}
+
+output "image_name" {
+  value       = local.image_name
+  description = "Container image name used by infra"
+}
+
+output "app_label" {
+  value       = local.project_slug
+  description = "App label value applied to compute instances"
 }
 
 output "iap_jwt_audience" {
@@ -75,7 +85,7 @@ output "data_disk_name" {
 }
 
 output "data_mount_path" {
-  value       = var.data_mount_path
+  value       = local.data_mount_path
   description = "Data disk mount path on VM"
 }
 
