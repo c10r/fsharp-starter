@@ -56,6 +56,7 @@ Optional capabilities are documented under `.agents/skills`:
 - `fsharp-debugger`
 - `iap-auth`
 - `openfga`
+- `opentofu`
 - `gcp-deploy`
 - `review-backend`
 - `review-frontend`
