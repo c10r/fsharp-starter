@@ -20,6 +20,7 @@ Create `.github/workflows/deploy.yml` for this repo's GCP deploy path. Adapt the
    - validate required GitHub Actions variables before authenticating
    - authenticate with `google-github-actions/auth@v3`
    - install `gcloud`
+   - fetch GKE credentials when the deploy path uses Kubernetes
    - install OpenTofu
    - initialize the OpenTofu backend
    - run the repo deploy entrypoint
@@ -39,6 +40,8 @@ Keep the validation step aligned with the workflow template in `assets/deploy.ym
 - `GCP_PROJECT_ID`
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 - `GCP_DEPLOY_SERVICE_ACCOUNT`
+- `GKE_CLUSTER_NAME`
+- `GKE_CLUSTER_LOCATION`
 - `TOFU_BACKEND_BUCKET`
 - `TOFU_BACKEND_PREFIX`
 

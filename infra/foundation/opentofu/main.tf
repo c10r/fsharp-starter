@@ -106,6 +106,7 @@ resource "google_service_account_iam_member" "deploy_workload_identity_user" {
 resource "google_project_iam_member" "deploy_roles" {
   for_each = toset([
     "roles/artifactregistry.writer",
+    "roles/container.clusterViewer",
     "roles/compute.instanceAdmin.v1",
     "roles/compute.osAdminLogin",
     "roles/iap.tunnelResourceAccessor",

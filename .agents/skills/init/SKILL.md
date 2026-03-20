@@ -100,7 +100,7 @@ If a phase has only frontend changes, still list backend checks and mark them as
     - state bucket default: `iac-state-<project-slug>`
     - GitHub repo default: `internal-tools-<project-slug>`
     - default domain: `<project-slug>.wonderly.info`
-    - default deploy branch: `master`
+    - default deploy branch: `main`
   - Update example/backend config files and docs where starter placeholders would otherwise conflict with the chosen project name.
 
 ## Auth Granularity Rules
