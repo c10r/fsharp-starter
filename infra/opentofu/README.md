@@ -76,6 +76,7 @@ Local prerequisites for cluster deploys:
 The script:
 
 - builds and pushes the app image to the per-app Artifact Registry repo
+- syncs `TFVARS_PATH` to the selected immutable `image_tag` when that file exists
 - applies `infra/opentofu` with the selected `image_tag`
 - waits for the `StatefulSet` rollout in the platform-created namespace
 
@@ -84,7 +85,7 @@ Useful overrides:
 ```bash
 IMAGE_TAG=$(git rev-parse --short HEAD) scripts/deploy-app-from-tofu.sh
 PUBLISH_LATEST=true scripts/deploy-app-from-tofu.sh
-scripts/deploy-app-from-tofu.sh -var-file=environments/dev/terraform.tfvars.example
+TFVARS_PATH=infra/opentofu/environments/dev/terraform.tfvars.example scripts/deploy-app-from-tofu.sh -var-file=environments/dev/terraform.tfvars.example
 ```
 
 ## App-Owned Changes

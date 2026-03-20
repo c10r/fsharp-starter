@@ -41,7 +41,7 @@ variable "github_repository_name" {
 variable "github_deploy_branch" {
   description = "Git branch or full ref allowed to deploy via GitHub Actions"
   type        = string
-  default     = "master"
+  default     = "main"
 }
 
 variable "github_workload_identity_pool_id" {
